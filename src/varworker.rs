@@ -1,6 +1,6 @@
 use crate::worker;
 use crate::transaction;
-use crate::message;
+use crate::message::Message;
 
 use std::collections::{Vec, HashSet, HashMap};
 
@@ -31,29 +31,29 @@ impl VarWorker {
         worker: worker::Worker,
         curr_val: Option<i32>,
         applied_txns: Vec<transaction::Txn>,
-        ... 
+        /* ... */
     ) {
         match msg {
             // srvmanager will only send Write/Read requests when it checked
             // relevant locks are already acquired
-            message::Message::ReadVarRequest{ txn } => {
+            Message::ReadVarRequest{ txn } => {
                 // send ReadVarResult message back to who send the request, we 
                 // assume ReadVarRequest can only be sent by srvmanager
 
                 // calculate the latest applied txn on var worker
                 let mut latest_txn = HashSet::new();
                 latest_txn.insert(applied_txns[applied_txns.length() - 1]);
-                let backmsg = message::Message::ReadVarResult {
+                let backmsg = Message::ReadVarResult {
                     txn, 
                     curr_val, 
                     latest_txn,
-                },
+                };
                 let _ = worker.sender_to_manager.send(backmsg).await.expect("...")
             }
-            message::Message::WriteVarRequest{ txn,  write_val } => {
-                ... 
+            Message::WriteVarRequest{ txn,  write_val } => {
+                todo!()
             }
-            _ => panic!()
+            _ => panic!(),
 
         }
     }

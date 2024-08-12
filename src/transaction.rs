@@ -1,6 +1,6 @@
 use tokio::time::Instant;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TxnId {
     pub time: Instant,
     // address or uuid to break tie
@@ -8,11 +8,14 @@ pub struct TxnId {
 
 impl TxnId {
     pub fn new() -> TxnId {
-       TxnId{time: Instant::now(),}
+        TxnId {
+            time: Instant::now(),
+        }
     }
 }
 
-// a single update to state var 
+// a single update to state var
+#[derive(Debug, Clone)]
 pub struct WriteToName {
     pub name: String,
     pub expr: i32,
@@ -20,7 +23,8 @@ pub struct WriteToName {
 
 // (txid, writes)
 // writes := a list of updates to state vars
+#[derive(Debug, Clone)]
 pub struct Txn {
-    pub id: TxnId, 
+    pub id: TxnId,
     pub writes: Vec<WriteToName>,
 }

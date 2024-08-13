@@ -2,7 +2,8 @@ use crate::worker;
 use crate::transaction;
 use crate::message;
 
-use std::collections::{Vec, HashSet, HashMap};
+use tokio::sync::mpsc;
+use std::collections::{HashSet, HashMap};
 
 pub struct VarWorker {
     pub worker: worker::Worker,
@@ -19,7 +20,7 @@ impl VarWorker {
         sender_to_manager: mpsc::Sender<message::Message>,
     ) -> VarWorker {
         VarWorker {
-            worker::new(name, inbox, sender_to_manager),
+            worker: worker::Worker::new(name, inbox, sender_to_manager),
             value: None,
             applied_txns: Vec::new(),
             provides: HashSet::new(),
@@ -28,10 +29,12 @@ impl VarWorker {
     }
 
     pub async fn handle_message(
-        worker: worker::Worker,
-        curr_val: Option<i32>,
-        applied_txns: Vec<transaction::Txn>,
-        ... 
+        worker: &worker::Worker,
+        curr_val: &mut Option<i32>,
+        msg: &message::Message,
+        applied_txns: &mut Vec<transaction::Txn>,
+        provides: &mut HashSet<transaction::Txn>,
+        requires: &mut HashSet<transaction::Txn>,
     ) {
         match msg {
             // srvmanager will only send Write/Read requests when it checked
@@ -42,16 +45,25 @@ impl VarWorker {
 
                 // calculate the latest applied txn on var worker
                 let mut latest_txn = HashSet::new();
-                latest_txn.insert(applied_txns[applied_txns.length() - 1]);
+                latest_txn.insert(applied_txns[applied_txns.len() - 1]);
                 let backmsg = message::Message::ReadVarResult {
-                    txn, 
-                    curr_val, 
-                    latest_txn,
-                },
+                    txn: txn.clone(), 
+                    result: curr_val.clone(), 
+                    result_provide: latest_txn,
+                };
                 let _ = worker.sender_to_manager.send(backmsg).await.expect("...")
+                // lock then should be released by srvmanager
+
+                applied_txns.push(txn.clone());
             }
-            message::Message::WriteVarRequest{ txn,  write_val } => {
-                ... 
+            message::Message::WriteVarRequest{ txn,  write_val, requires } => {
+                // do write 
+
+                // add requires
+                for r_txn in requires.iter() {
+                    applied_txns.push(r_txn.clone());
+                }
+                
             }
             _ => panic!()
 

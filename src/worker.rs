@@ -26,7 +26,9 @@ impl Worker {
         sender_to_manager: mpsc::Sender<message::Message>,
     ) -> Worker {
         Worker {
-            name, inbox, sender_to_manager,
+            name: name.to_string(), 
+            inbox, 
+            sender_to_manager,
             senders_to_succs: Vec::new(),
         }
     }

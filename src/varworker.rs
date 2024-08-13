@@ -51,7 +51,7 @@ impl VarWorker {
                     result: curr_val.clone(), 
                     result_provide: latest_txn,
                 };
-                let _ = worker.sender_to_manager.send(backmsg).await.expect("...")
+                let _ = worker.sender_to_manager.send(backmsg).await.expect("...");
                 // lock then should be released by srvmanager
 
                 applied_txns.push(txn.clone());

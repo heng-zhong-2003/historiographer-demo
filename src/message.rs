@@ -1,5 +1,6 @@
-use tokio::sync::mpsc;
 use crate::transaction;
+use std::collections::HashSet;
+use tokio::sync::mpsc;
 
 use std::collections::{HashMap, HashSet};
 
@@ -12,7 +13,7 @@ pub enum LockKind {
 #[derive(Clone, Debug)]
 // Message types received by state var nodes
 pub enum Message {
-    // Lock acquire is only needed inter-ServiceManagers 
+    // Lock acquire is only needed inter-ServiceManagers
     // LockAcquire {
 
     // },
@@ -44,8 +45,8 @@ pub enum Message {
     // var worker -> def worker (succs)
     // propagate message type (new_value, P set, R set)
     PropaMessage {
-        new_val: i32, 
+        new_val: i32,
         provides: HashSet<transaction::Txn>,
         requires: HashSet<transaction::Txn>,
-    }
+    },
 }

@@ -10,7 +10,9 @@ pub struct TxnId {
 
 impl TxnId {
     pub fn new() -> TxnId {
-       TxnId{time: Instant::now(),}
+        TxnId {
+            time: Instant::now(),
+        }
     }
 }
 
@@ -25,7 +27,7 @@ pub struct WriteToName {
 // writes := a list of updates to state vars
 #[derive(Clone, Debug)]
 pub struct Txn {
-    pub id: TxnId, 
+    pub id: TxnId,
     pub writes: Vec<WriteToName>,
 }
 

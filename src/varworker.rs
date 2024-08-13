@@ -73,12 +73,9 @@ impl VarWorker {
                 };
 
                 // send to subscribers
-
                 for succ in worker.senders_to_succs.iter() {
                     let _ = succ.send(msg_propa.clone()).await;
                 }
-
-                
                 
             }
             _ => panic!()

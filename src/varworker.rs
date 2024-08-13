@@ -9,7 +9,7 @@ pub struct VarWorker {
     pub worker: worker::Worker,
     pub value: Option<i32>,
     pub applied_txns: Vec<transaction::Txn>,
-    pub provides: HashSet<transaction::Txn>,
+    // pub provides: HashSet<transaction::Txn>,
     pub requires: HashSet<transaction::Txn>,
 }
 
@@ -23,7 +23,7 @@ impl VarWorker {
             worker: worker::Worker::new(name, inbox, sender_to_manager),
             value: None,
             applied_txns: Vec::new(),
-            provides: HashSet::new(),
+            // provides: HashSet::new(),
             requires: HashSet::new(),
         }
     }
@@ -33,7 +33,7 @@ impl VarWorker {
         curr_val: &mut Option<i32>,
         msg: &message::Message,
         applied_txns: &mut Vec<transaction::Txn>,
-        provides: &mut HashSet<transaction::Txn>,
+        // provides: &mut HashSet<transaction::Txn>,
         requires: &mut HashSet<transaction::Txn>,
     ) {
         match msg {
@@ -44,8 +44,8 @@ impl VarWorker {
                 // assume ReadVarRequest can only be sent by srvmanager
 
                 // calculate the latest applied txn on var worker
-                let mut latest_txn = HashSet::new();
-                latest_txn.insert(applied_txns[applied_txns.len() - 1]);
+                let mut latest_txn = HashSet::from(
+                    [applied_txns[applied_txns.len() - 1].clone()]);
                 let backmsg = message::Message::ReadVarResult {
                     txn: txn.clone(), 
                     result: curr_val.clone(), 
@@ -58,11 +58,27 @@ impl VarWorker {
             }
             message::Message::WriteVarRequest{ txn,  write_val, requires } => {
                 // do write 
+                *curr_val = Some(write_val.clone());
 
                 // add requires
                 for r_txn in requires.iter() {
                     applied_txns.push(r_txn.clone());
                 }
+
+                // build propagation message 
+                let msg_propa = message::Message::PropaMessage { 
+                    new_val: curr_val.clone().unwrap(), 
+                    provides: HashSet::from([txn.clone()]), 
+                    requires: requires.clone(), 
+                };
+
+                // send to subscribers
+
+                for succ in worker.senders_to_succs.iter() {
+                    let _ = succ.send(msg_propa.clone()).await;
+                }
+
+                
                 
             }
             _ => panic!()

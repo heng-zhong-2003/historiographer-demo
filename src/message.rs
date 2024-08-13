@@ -1,12 +1,17 @@
-use crate::transaction;
+use crate::transaction::Txn;
 use tokio::sync::mpsc;
 
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
-pub enum LockKind {
+pub enum LockType {
     WLock,
     RLock,
+}
+
+pub struct Lock {
+    txn: Txn, // can use TxnId instead of whole transaction
+    lock_t: LockType,
 }
 
 #[derive(Clone, Debug)]
@@ -27,25 +32,26 @@ pub enum Message {
     // },
     // srvmanager -> var worker
     ReadVarRequest {
-        txn: transaction::Txn,
+        txn: Txn,
     },
-    // var worker -> srvmanager
+    // var worker -> srvmanager 
     ReadVarResult {
-        txn: transaction::Txn,
+        txn: Txn,
+        name: String,
         result: Option<i32>,
-        result_provide: HashSet<transaction::Txn>,
+        result_provide: HashSet<Txn>,
     },
     // srvmanager -> var worker
     WriteVarRequest {
-        txn: transaction::Txn,
+        txn: Txn,
         write_val: i32,
-        requires: HashSet<transaction::Txn>,
+        requires: HashSet<Txn>,
     },
     // var worker -> def worker (succs)
     // propagate message type (new_value, P set, R set)
     PropaMessage {
         new_val: i32,
-        provides: HashSet<transaction::Txn>,
-        requires: HashSet<transaction::Txn>,
+        provides: HashSet<Txn>,
+        requires: HashSet<Txn>,
     },
 }

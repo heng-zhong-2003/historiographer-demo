@@ -16,11 +16,19 @@ impl TxnId {
     }
 }
 
+// version 1 only test f := int | def | var
+#[derive(Clone, Debug)]
+pub enum Val {
+    Int(i32),
+    Def(String),
+    Var(String),
+}
+
 // a single update to state var 
 #[derive(Clone, Debug)]
 pub struct WriteToName {
     pub name: String,
-    pub expr: i32,
+    pub expr: Val,
 }
 
 // (txid, writes)

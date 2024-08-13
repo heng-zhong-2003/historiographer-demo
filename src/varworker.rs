@@ -10,7 +10,7 @@ pub struct VarWorker {
     pub value: Option<i32>,
     pub applied_txns: Vec<transaction::Txn>,
     // pub provides: HashSet<transaction::Txn>,
-    pub requires: HashSet<transaction::Txn>,
+    pub next_requires: HashSet<transaction::Txn>,
 }
 
 impl VarWorker {
@@ -24,7 +24,7 @@ impl VarWorker {
             value: None,
             applied_txns: Vec::new(),
             // provides: HashSet::new(),
-            requires: HashSet::new(),
+            next_requires: HashSet::new(),
         }
     }
 
@@ -34,7 +34,7 @@ impl VarWorker {
         msg: &message::Message,
         applied_txns: &mut Vec<transaction::Txn>,
         // provides: &mut HashSet<transaction::Txn>,
-        requires: &mut HashSet<transaction::Txn>,
+        next_requires: &mut HashSet<transaction::Txn>,
     ) {
         match msg {
             // srvmanager will only send Write/Read requests when it checked
@@ -44,25 +44,31 @@ impl VarWorker {
                 // assume ReadVarRequest can only be sent by srvmanager
 
                 // calculate the latest applied txn on var worker
-                let mut latest_txn = HashSet::from(
+                let latest_txn = HashSet::from(
                     [applied_txns[applied_txns.len() - 1].clone()]);
-                let backmsg = message::Message::ReadVarResult {
-                    txn: txn.clone(), 
-                    result: curr_val.clone(), 
-                    result_provide: latest_txn,
+                let msg_back = message::Message::ReadVarResult {
+                    txn: txn.clone(), // ?
+                    name: worker.name.clone(),
+                    result: curr_val.clone(), // current value of state var
+                    result_provide: latest_txn, // state var's latest applied txn
                 };
-                let _ = worker.sender_to_manager.send(backmsg).await.expect("...");
+
+                
+
+                // send message back to srvmanager
+                let _ = worker.sender_to_manager.send(msg_back).await;
                 // lock then should be released by srvmanager
 
-                applied_txns.push(txn.clone());
+                next_requires.insert(txn.clone());
+                
             }
             message::Message::WriteVarRequest{ txn,  write_val, requires } => {
                 // do write 
                 *curr_val = Some(write_val.clone());
 
-                // add requires
+                // add requires to next requires
                 for r_txn in requires.iter() {
-                    applied_txns.push(r_txn.clone());
+                    next_requires.insert(r_txn.clone());
                 }
 
                 // build propagation message 
@@ -72,7 +78,12 @@ impl VarWorker {
                     requires: requires.clone(), 
                 };
 
-                // send to subscribers
+                // update applied txns 
+                applied_txns.push(txn.clone());
+                // update next requires 
+                next_requires.insert(txn.clone());
+
+                // send to subscribers (def workers)
                 for succ in worker.senders_to_succs.iter() {
                     let _ = succ.send(msg_propa.clone()).await;
                 }

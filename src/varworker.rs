@@ -1,9 +1,9 @@
-use crate::worker::Worker;
-use crate::transaction;
 use crate::message;
+use crate::transaction;
+use crate::worker::Worker;
 
+use std::collections::{HashMap, HashSet};
 use tokio::sync::mpsc;
-use std::collections::{HashSet, HashMap};
 
 pub struct VarWorker {
     pub worker: Worker,
@@ -39,31 +39,31 @@ impl VarWorker {
         match msg {
             // srvmanager will only send Write/Read requests when it checked
             // relevant locks are already acquired
-            message::Message::ReadVarRequest{ txn } => {
-                // send ReadVarResult message back to who send the request, we 
+            message::Message::ReadVarRequest { txn } => {
+                // send ReadVarResult message back to who send the request, we
                 // assume ReadVarRequest can only be sent by srvmanager
 
                 // calculate the latest applied txn on var worker
-                let latest_txn = HashSet::from(
-                    [applied_txns[applied_txns.len() - 1].clone()]);
+                let latest_txn = HashSet::from([applied_txns[applied_txns.len() - 1].clone()]);
                 let msg_back = message::Message::ReadVarResult {
                     txn: txn.clone(), // ?
                     name: worker.name.clone(),
-                    result: curr_val.clone(), // current value of state var
+                    result: curr_val.clone(),   // current value of state var
                     result_provide: latest_txn, // state var's latest applied txn
                 };
-
-                
 
                 // send message back to srvmanager
                 let _ = worker.sender_to_manager.send(msg_back).await;
                 // lock then should be released by srvmanager
 
                 next_requires.insert(txn.clone());
-                
             }
-            message::Message::WriteVarRequest{ txn,  write_val, requires } => {
-                // do write 
+            message::Message::WriteVarRequest {
+                txn,
+                write_val,
+                requires,
+            } => {
+                // do write
                 *curr_val = Some(write_val.clone());
 
                 // add requires to next requires
@@ -71,26 +71,24 @@ impl VarWorker {
                     next_requires.insert(r_txn.clone());
                 }
 
-                // build propagation message 
-                let msg_propa = message::Message::PropaMessage { 
-                    new_val: curr_val.clone().unwrap(), 
-                    provides: HashSet::from([txn.clone()]), 
-                    requires: requires.clone(), 
+                // build propagation message
+                let msg_propa = message::Message::PropaMessage {
+                    new_val: curr_val.clone().unwrap(),
+                    provides: HashSet::from([txn.clone()]),
+                    requires: requires.clone(),
                 };
 
-                // update applied txns 
+                // update applied txns
                 applied_txns.push(txn.clone());
-                // update next requires 
+                // update next requires
                 next_requires.insert(txn.clone());
 
                 // send to subscribers (def workers)
                 for succ in worker.senders_to_succs.iter() {
                     let _ = succ.send(msg_propa.clone()).await;
                 }
-                
             }
-            _ => panic!()
-
+            _ => panic!(),
         }
     }
 
@@ -105,5 +103,5 @@ impl VarWorker {
             )
             .await;
         }
-    } 
+    }
 }

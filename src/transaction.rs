@@ -7,7 +7,6 @@ pub struct TxnId {
     // address or uuid to break tie
 }
 
-
 impl TxnId {
     pub fn new() -> TxnId {
         TxnId {
@@ -24,7 +23,7 @@ pub enum Val {
     Var(String),
 }
 
-// a single update to state var 
+// a single update to state var
 #[derive(Clone, Debug)]
 pub struct WriteToName {
     pub name: String,

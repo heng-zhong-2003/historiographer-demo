@@ -1,8 +1,8 @@
-use crate::worker::Worker;
-use crate::transaction::{Val, Txn};
 use crate::message::Message;
+use crate::transaction::{Txn, Val};
+use crate::worker::Worker;
 
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 pub struct DefWorker {
     pub worker: Worker,
@@ -12,60 +12,48 @@ pub struct DefWorker {
     pub replica: HashMap<String, Option<i32>>,
     // for now expr is list of name or values calculating their sum
     pub expr: Vec<Val>,
-
-
-    pub ...
-
+    // pub ...
 }
 
 impl DefWorker {
     pub fn new() -> DefWorker {
-
+        todo!()
     }
 
-    pub async fn handle_message(
-
-        msg: &Message,
-    ) {
+    pub async fn handle_message(msg: &Message) {
         match msg {
             Message::ReadDefRequest { txn } => {
-            // { f := def }
-            // ?
+                // { f := def }
+                // ?
 
-            // add to pending queue ?
-            
-            //
-            //   while true {
-            //        handle_message 
-            //        default process
-            //   }
-             
-            // all txns in requires must already be applied by def worker
+                // add to pending queue ?
 
-            // if all requires already in applied_txns, then send back to srvmananger
+                //
+                //   while true {
+                //        handle_message
+                //        default process
+                //   }
 
-            
+                // all txns in requires must already be applied by def worker
 
+                // if all requires already in applied_txns, then send back to srvmananger
             }
-            Message::PropaMessage { new_val, provides, requires } => {
-
-            }
-            _ => panic!()
+            Message::PropaMessage {
+                new_val,
+                provides,
+                requires,
+            } => {}
+            _ => panic!(),
         }
 
         pub async fn run_defworker(mut def_worker: DefWorker) {
             while let Some(msg) = def_worker.worker.inbox.recv().await {
-                let _ = DefWorker::handle_message(
-                    &msg
-                ).await;
+                let _ = DefWorker::handle_message(&msg).await;
 
-                // search for valid batch 
+                // search for valid batch
 
                 // apply valid batch
-
             }
         }
-
-
     }
 }

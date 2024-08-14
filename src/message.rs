@@ -34,12 +34,21 @@ pub enum Message {
     ReadVarRequest {
         txn: Txn,
     },
+    // srvmanager -> def worker
+    ReadDefRequest {
+        txn: Txn,
+        // requires: HashSet<Txn>, // ??
+    },
     // var worker -> srvmanager 
     ReadVarResult {
         txn: Txn,
         name: String,
         result: Option<i32>,
         result_provide: HashSet<Txn>,
+    },
+    ReadDefResult {
+        txn: Txn,
+        result: Option<i32>,
     },
     // srvmanager -> var worker
     WriteVarRequest {

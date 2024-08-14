@@ -1,4 +1,4 @@
-use crate::worker;
+use crate::worker::Worker;
 use crate::transaction;
 use crate::message;
 
@@ -6,7 +6,7 @@ use tokio::sync::mpsc;
 use std::collections::{HashSet, HashMap};
 
 pub struct VarWorker {
-    pub worker: worker::Worker,
+    pub worker: Worker,
     pub value: Option<i32>,
     pub applied_txns: Vec<transaction::Txn>,
     // pub provides: HashSet<transaction::Txn>,
@@ -20,7 +20,7 @@ impl VarWorker {
         sender_to_manager: mpsc::Sender<message::Message>,
     ) -> VarWorker {
         VarWorker {
-            worker: worker::Worker::new(name, inbox, sender_to_manager),
+            worker: Worker::new(name, inbox, sender_to_manager),
             value: None,
             applied_txns: Vec::new(),
             // provides: HashSet::new(),
@@ -29,7 +29,7 @@ impl VarWorker {
     }
 
     pub async fn handle_message(
-        worker: &worker::Worker,
+        worker: &Worker,
         curr_val: &mut Option<i32>,
         msg: &message::Message,
         applied_txns: &mut Vec<transaction::Txn>,
@@ -93,4 +93,17 @@ impl VarWorker {
 
         }
     }
+
+    pub async fn run_varworker(mut var_worker: VarWorker) {
+        while let Some(msg) = var_worker.worker.inbox.recv().await {
+            let _ = VarWorker::handle_message(
+                &var_worker.worker,
+                &mut var_worker.value,
+                &msg,
+                &mut var_worker.applied_txns,
+                &mut var_worker.next_requires,
+            )
+            .await;
+        }
+    } 
 }

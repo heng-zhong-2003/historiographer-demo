@@ -8,18 +8,6 @@ use tokio::sync::mpsc;
 
 const BUFFER_SIZE: usize = 1024;
 
-async fn run_varworker(mut var_worker: VarWorker) {
-    while let Some(msg) = var_worker.worker.inbox.recv().await {
-        let _ = VarWorker::handle_message(
-            &var_worker.worker,
-            &mut var_worker.value,
-            &msg,
-            &mut var_worker.applied_txns,
-            &mut var_worker.next_requires,
-        )
-        .await;
-    }
-} 
 
 pub struct ServiceManager {
     // channels
@@ -65,7 +53,7 @@ impl ServiceManager {
             rcvr, 
             sender_to_manager.clone());
         
-        tokio::spawn(run_varworker(var_worker));    
+        tokio::spawn(VarWorker::run_varworker(var_worker));    
     }
 
     pub async fn handle_transaction(
@@ -121,7 +109,8 @@ impl ServiceManager {
                                 let new_val = match &write.expr {
                                     Val::Int(x) => *x,
                                     Val::Var(n) => names_to_value.get(n).unwrap().unwrap(),
-                                    Val::Def(_) => todo!(),   
+                                    Val::Def(_) => todo!(), 
+                                    
                                 };
                                 let msg_write_request = Message::WriteVarRequest { 
                                     txn: txn.clone(), 

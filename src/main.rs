@@ -61,6 +61,44 @@ async fn main() {
         _ => panic!(),
     }
 
+    // Assign
+    let write_a_txn = Txn {
+        id: TxnId::new(),
+        writes: vec![WriteToName {
+            name: "a".to_string(),
+            expr: Val::Int(114514),
+        }],
+    };
+    let write_a_msg = Message::WriteVarRequest {
+        txn: write_a_txn,
+        write_val: 114514,
+        requires: HashSet::new(),
+    };
+    let _ = var_a_inbox.send(write_a_msg).await.unwrap();
+
+    let read_a_txn = Txn {
+        id: TxnId::new(),
+        writes: vec![WriteToName {
+            name: "a".to_string(),
+            expr: Val::Int(5),
+        }],
+    };
+    let read_a_msg = Message::ReadVarRequest { txn: read_a_txn };
+    let _ = var_a_inbox.send(read_a_msg).await.unwrap();
+
+    let recv_msg = manager.receiver_from_workers.recv().await.unwrap();
+    match recv_msg {
+        Message::ReadVarResult {
+            txn,
+            name,
+            result,
+            result_provide,
+        } => {
+            println!("after assign, name {}, result {:?}", name, result);
+        }
+        _ => panic!(),
+    }
+
     // test 1
     /*
        var a = 1;

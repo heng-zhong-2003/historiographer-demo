@@ -73,9 +73,13 @@ impl VarWorker {
 
                 // build propagation message
                 let msg_propa = message::Message::PropaMessage {
-                    new_val: curr_val.clone().unwrap(),
-                    provides: HashSet::from([txn.clone()]),
-                    requires: requires.clone(),
+                    propa_change: message::PropaChange {
+                        name: worker.name.to_string(),
+                        new_val: curr_val.clone().unwrap(),
+                        provides: HashSet::from([txn.clone()]),
+                        requires: requires.clone(),
+                    },
+                    
                 };
 
                 // update applied txns

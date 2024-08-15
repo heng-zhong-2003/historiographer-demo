@@ -48,7 +48,6 @@ impl ServiceManager {
         let (sndr, rcvr) = mpsc::channel(BUFFER_SIZE);
         let var_worker = VarWorker::new(name, rcvr, sender_to_manager.clone());
 
-        // Aug 14 Heng Fix, suspicious: should add (name, inbox) into worker_inboxes
         worker_inboxes.insert(name.to_string(), sndr);
 
         tokio::spawn(VarWorker::run_varworker(var_worker));
@@ -88,19 +87,22 @@ impl ServiceManager {
         // calculate the require set (R) of the transactions
         let mut requires_for_txn: HashSet<Txn> = HashSet::new();
 
+
         while let Some(msg_back) = receiver_from_workers.recv().await {
             match msg_back {
                 Message::ReadVarResult {
-                    txn,
+                    txn: txn_back,
                     name,
                     result,
                     result_provide,
                 } => {
-                    cnt -= 1;
-                    names_to_value.insert(name.clone(), result);
-
-                    requires_for_txn = requires_for_txn.union(&result_provide).cloned().collect(); // ?
-
+                    // make sure response from current txn's request
+                    if txn_back == *txn {
+                        cnt -= 1;
+                        names_to_value.insert(name.clone(), result);
+                        requires_for_txn = requires_for_txn.union(&result_provide).cloned().collect(); // ?
+                    }
+                    
                     // when we gained all reads
                     if cnt == 0 {
                         // send out all the write requests to var workers
@@ -119,6 +121,8 @@ impl ServiceManager {
                             let _ = var_addr.send(msg_write_request).await;
                         }
                     }
+
+                    // still need to deal with deadlock when cnt > 0
                 }
                 _ => panic!("unexpected message heard from workers"),
             }

@@ -99,12 +99,12 @@ async fn main() {
         _ => panic!(),
     }
 
+
     // test 1
     /*
        var a = 1;
        var b = 2;
        var c = 3;
-       def d = a + b + c;
        do action {
            a = b;
            b = c;

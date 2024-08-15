@@ -10,8 +10,16 @@ pub enum LockType {
 }
 
 pub struct Lock {
-    txn: Txn, // can use TxnId instead of whole transaction
-    lock_t: LockType,
+    pub txn: Txn, // can use TxnId instead of whole transaction
+    pub lock_t: LockType,
+}
+
+#[derive(Clone, Debug)]
+pub struct PropaChange {
+    pub name: String,
+    pub new_val: i32,
+    pub provides: HashSet<Txn>,
+    pub requires: HashSet<Txn>,
 }
 
 #[derive(Clone, Debug)]
@@ -59,8 +67,13 @@ pub enum Message {
     // var worker -> def worker (succs)
     // propagate message type (new_value, P set, R set)
     PropaMessage {
-        new_val: i32,
-        provides: HashSet<Txn>,
-        requires: HashSet<Txn>,
+        propa_change: PropaChange
     },
+
+    // SubscribeRequest {
+
+    // },
+    // SubscribeGrant {
+
+    // },
 }

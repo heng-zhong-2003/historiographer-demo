@@ -15,6 +15,9 @@ pub struct DefWorker {
     pub worker: Worker,
     pub value: Option<i32>,
     pub applied_txns: Vec<Txn>,
+    pub prev_batch_provides: HashSet<Txn>,
+    // data structure maintaining all propa_changes to be apply
+    pub propa_changes_to_apply: HashMap<Txn, _PropaChange>,
 
     // for now expr is list of name or values calculating their sum
     pub expr: Vec<Val>,
@@ -24,8 +27,7 @@ pub struct DefWorker {
     // and SubscribeRequest/Grant for global dependencies
     pub transtitive_deps: HashSet<String>, 
     
-    // data structure maintaining all propa_changes to be apply
-    pub propa_changes_to_apply: HashMap<Txn, _PropaChange>,
+    
 }
 
 impl DefWorker {
@@ -41,10 +43,11 @@ impl DefWorker {
             worker: Worker::new(name, inbox, sender_to_manager),
             value: None,
             applied_txns: Vec::new(),
+            prev_batch_provides: HashSet::new(),
+            propa_changes_to_apply: HashMap::new(),
             expr,
             replica,
             transtitive_deps,
-            propa_changes_to_apply: HashMap::new(),
         }
     }
 
@@ -83,23 +86,42 @@ impl DefWorker {
         }
     }
 
-    pub fn apply_batch(
+    // TODO: now we only assume def f := f1 + f2 + ... + f_n
+    pub fn compute_val(replica: & HashMap<String, Option<i32>>) -> Option<i32> {
+        let mut sum = 0;
+        for (k, value) in replica.iter() {
+            match value {
+                Some(v) => sum += v,
+                None => return None,
+            }
+        }
+        return Some(sum);
+    }
+
+    pub async fn apply_batch(
         batch: HashSet<_PropaChange>,
+        worker: &Worker,
+        value: &mut Option<i32>,
         applied_txns: &mut Vec<Txn>,
+        prev_batch_provides: &mut HashSet<Txn>,
         propa_changes_to_apply: &mut HashMap<Txn, _PropaChange>,
         replica: &mut HashMap<String, Option<i32>>,
     ) {
         let mut all_provides: HashSet<Txn> = HashSet::new();
+        let mut all_requires: HashSet<Txn> = prev_batch_provides.clone();
+
+        // latest change to prevent applying older updates after younger ones 
+        // from the same dependency (only apply one dependency's latest update 
+        // in the batch, and ignore others)
         let mut latest_change: HashMap<String, i32> = HashMap::new();
-        // change := <value, P, R> 
+        
         for change in batch.iter() {
             let change_txns_toapply = &change.propa_change.provides;
             all_provides = all_provides.union(change_txns_toapply).cloned().collect();
-            // all_requires = all_requires.union(&change.propa_change.requires).cloned().collect();
+            all_requires = all_requires.union(&change.propa_change.requires).cloned().collect();
+            
             for txn in change_txns_toapply.iter() {
                 propa_changes_to_apply.remove(txn);
-                
-                // applied_txns.push(txn.clone());
                 // TODO: more to do for require set
             }
 
@@ -108,10 +130,35 @@ impl DefWorker {
             }
 
             replica.insert(change.propa_change.name.clone(), Some(change.propa_change.new_val));
+            latest_change.insert(change.propa_change.name.clone(), change.propa_id);
 
             // TODO: more to do for require set
         }
 
+        // apply all txns in all_provides, the result should be calculated from 
+        // replicas now 
+        *value = Self::compute_val(&replica);
+        for txn in all_provides.iter() {
+            applied_txns.push(txn.clone());
+        }
+
+        // update prev batch's applied txns, i.e. to be all_provides
+        *prev_batch_provides = all_provides.clone();
+
+        // broadcast the update to subscribers 
+        
+        let msg_propa = Message::PropaMessage { propa_change: 
+            PropaChange { 
+                name: worker.name.clone(), 
+                new_val: value.clone().unwrap(), 
+                provides: all_provides.clone(), 
+                requires: all_requires.clone(), 
+            }
+        };
+
+        for succ in worker.senders_to_succs.iter() {
+            let _ = succ.send(msg_propa.clone()).await;
+        }
     }
 }
 

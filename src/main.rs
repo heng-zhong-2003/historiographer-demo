@@ -22,9 +22,8 @@ async fn main() {
         &mut manager.worker_inboxes,
     )
     .await;
-    // tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
     let var_a_inbox = manager.worker_inboxes.get("a").unwrap();
-    let write_a_txn = Txn {
+    /* let write_a_txn = Txn {
         id: TxnId::new(),
         writes: vec![WriteToName {
             name: "a".to_string(),
@@ -97,8 +96,34 @@ async fn main() {
             println!("after assign, name {}, result {:?}", name, result);
         }
         _ => panic!(),
-    }
+    } */
 
+    let write_a_txn = Txn {
+        id: TxnId::new(),
+        writes: vec![WriteToName {
+            name: "a".to_string(),
+            expr: Val::Int(3),
+        }],
+    };
+    ServiceManager::handle_transaction(
+        &write_a_txn,
+        &mut manager.worker_inboxes,
+        &mut manager.receiver_from_workers,
+    )
+    .await;
+    // let read_a_txn = Txn {
+    //     id: TxnId::new(),
+    //     writes: vec![],
+    // };
+    // ServiceManager::handle_transaction(
+    //     &read_a_txn,
+    //     &mut manager.worker_inboxes,
+    //     &mut manager.receiver_from_workers,
+    // )
+    // .await;
+    // while let Some(rcv_val) = manager.receiver_from_workers.recv().await {
+    //     println!("receive value: {:?}", rcv_val);
+    // }
 
     // test 1
     /*

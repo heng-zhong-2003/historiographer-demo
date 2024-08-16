@@ -83,10 +83,8 @@ impl ServiceManager {
                 Val::Def(_) => continue,
             }
         }
-
         // calculate the require set (R) of the transactions
         let mut requires_for_txn: HashSet<Txn> = HashSet::new();
-
 
         while let Some(msg_back) = receiver_from_workers.recv().await {
             match msg_back {
@@ -100,9 +98,11 @@ impl ServiceManager {
                     if txn_back == *txn {
                         cnt -= 1;
                         names_to_value.insert(name.clone(), result);
-                        requires_for_txn = requires_for_txn.union(&result_provide).cloned().collect(); // ?
+                        requires_for_txn =
+                            requires_for_txn.union(&result_provide).cloned().collect();
+                        // ?
                     }
-                    
+
                     // when we gained all reads
                     if cnt == 0 {
                         // send out all the write requests to var workers

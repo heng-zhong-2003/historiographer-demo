@@ -70,6 +70,12 @@ pub enum Message {
         propa_change: PropaChange
     },
 
+    ManagerRetreive, 
+    ManagerRetreiveResult {
+        name: String,
+        result: Option<i32>,
+    }
+
     // SubscribeRequest {
 
     // },

@@ -20,9 +20,16 @@ async fn main() {
         "a",
         manager.sender_to_manager.clone(),
         &mut manager.worker_inboxes,
-    )
-    .await;
-    let var_a_inbox = manager.worker_inboxes.get("a").unwrap();
+    ) .await;
+    let _ = ServiceManager::create_worker(
+        "b",
+        manager.sender_to_manager.clone(),
+        &mut manager.worker_inboxes,
+    ) .await;
+
+    let var_a_inbox = manager.worker_inboxes.get("a").unwrap().clone();
+    let var_b_inbox = manager.worker_inboxes.get("b").unwrap().clone();
+ 
     /* let write_a_txn = Txn {
         id: TxnId::new(),
         writes: vec![WriteToName {
@@ -100,30 +107,62 @@ async fn main() {
 
     let write_a_txn = Txn {
         id: TxnId::new(),
-        writes: vec![WriteToName {
-            name: "a".to_string(),
-            expr: Val::Int(3),
-        }],
+        writes: vec![
+            WriteToName {
+                name: "a".to_string(),
+                expr: Val::Int(3),
+            },
+        ],
     };
+
     ServiceManager::handle_transaction(
         &write_a_txn,
         &mut manager.worker_inboxes,
         &mut manager.receiver_from_workers,
     )
     .await;
+
+    let write_b_txn = Txn {
+        id: TxnId::new(),
+        writes: vec![
+            WriteToName {
+                name: "a".to_string(),
+                expr: Val::Int(42),
+            },
+            WriteToName {
+                name: "b".to_string(),
+                expr: Val::Var("a".to_string()),
+            },
+        ],
+    };
+
+    ServiceManager::handle_transaction(
+        &write_b_txn,
+        &mut manager.worker_inboxes,
+        &mut manager.receiver_from_workers,
+    )
+    .await;
+
     // let read_a_txn = Txn {
     //     id: TxnId::new(),
     //     writes: vec![],
     // };
+
+    // println!("start handle read transaction");
     // ServiceManager::handle_transaction(
     //     &read_a_txn,
     //     &mut manager.worker_inboxes,
     //     &mut manager.receiver_from_workers,
     // )
     // .await;
-    // while let Some(rcv_val) = manager.receiver_from_workers.recv().await {
-    //     println!("receive value: {:?}", rcv_val);
-    // }
+
+    println!("start printing results");
+    // retrieve msg sent to var worker ...
+    let _ = var_a_inbox.send(Message::ManagerRetreive).await;
+    let _ = var_b_inbox.send(Message::ManagerRetreive).await;
+    while let Some(rcv_val) = manager.receiver_from_workers.recv().await {
+        println!("receive value: {:?}", rcv_val);
+    }
 
     // test 1
     /*

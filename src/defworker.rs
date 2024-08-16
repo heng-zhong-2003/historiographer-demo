@@ -86,18 +86,6 @@ impl DefWorker {
         }
     }
 
-    // TODO: now we only assume def f := f1 + f2 + ... + f_n
-    pub fn compute_val(replica: & HashMap<String, Option<i32>>) -> Option<i32> {
-        let mut sum = 0;
-        for (k, value) in replica.iter() {
-            match value {
-                Some(v) => sum += v,
-                None => return None,
-            }
-        }
-        return Some(sum);
-    }
-
     pub async fn apply_batch(
         batch: HashSet<_PropaChange>,
         worker: &Worker,
@@ -116,13 +104,13 @@ impl DefWorker {
         let mut latest_change: HashMap<String, i32> = HashMap::new();
         
         for change in batch.iter() {
+            // change := (value, P, R)
             let change_txns_toapply = &change.propa_change.provides;
             all_provides = all_provides.union(change_txns_toapply).cloned().collect();
             all_requires = all_requires.union(&change.propa_change.requires).cloned().collect();
             
             for txn in change_txns_toapply.iter() {
                 propa_changes_to_apply.remove(txn);
-                // TODO: more to do for require set
             }
 
             if let Some(id) = latest_change.get(&change.propa_change.name) {
@@ -131,13 +119,11 @@ impl DefWorker {
 
             replica.insert(change.propa_change.name.clone(), Some(change.propa_change.new_val));
             latest_change.insert(change.propa_change.name.clone(), change.propa_id);
-
-            // TODO: more to do for require set
         }
 
         // apply all txns in all_provides, the result should be calculated from 
         // replicas now 
-        *value = Self::compute_val(&replica);
+        *value = compute_val(&replica);
         for txn in all_provides.iter() {
             applied_txns.push(txn.clone());
         }
@@ -146,7 +132,6 @@ impl DefWorker {
         *prev_batch_provides = all_provides.clone();
 
         // broadcast the update to subscribers 
-        
         let msg_propa = Message::PropaMessage { propa_change: 
             PropaChange { 
                 name: worker.name.clone(), 
@@ -155,10 +140,20 @@ impl DefWorker {
                 requires: all_requires.clone(), 
             }
         };
-
         for succ in worker.senders_to_succs.iter() {
             let _ = succ.send(msg_propa.clone()).await;
         }
     }
 }
 
+// TODO: now we only assume def f := f1 + f2 + ... + f_n
+pub fn compute_val(replica: & HashMap<String, Option<i32>>) -> Option<i32> {
+    let mut sum = 0;
+    for (k, value) in replica.iter() {
+        match value {
+            Some(v) => sum += v,
+            None => return None,
+        }
+    }
+    return Some(sum);
+}

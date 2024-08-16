@@ -64,12 +64,12 @@ impl ServiceManager {
         let mut names_to_value: HashMap<String, Option<i32>> = HashMap::new();
 
         // require all reads
+        println!("enter iterating writes");
         for assign in txn.writes.iter() {
             match &assign.expr {
                 Val::Var(name) => {
                     // requires RLock from remote srvmanagers
                     // if RLock acquistion rejected (Die), then transaction abandoned
-
                     cnt += 1;
                     names_to_value.insert(name.clone(), None);
 
@@ -79,53 +79,72 @@ impl ServiceManager {
 
                     let _ = worker_inbox_addr.send(msg_request_read).await.unwrap();
                 }
-                Val::Int(_) => continue,
-                Val::Def(_) => continue,
+                Val::Int(_) => { 
+                    // let msg_write_request = Message::WriteVarRequest {
+                    //     txn: txn.clone(),
+                    //     write_val: *new_val,
+                    //     requires: HashSet::new(),
+                    // };
+                    // let var_addr = worker_inboxes.get(&assign.name).unwrap();
+                    // let _ = var_addr.send(msg_write_request).await;
+                    continue;
+                },
+                Val::Def(_) => { continue; },
             }
         }
         // calculate the require set (R) of the transactions
         let mut requires_for_txn: HashSet<Txn> = HashSet::new();
 
-        while let Some(msg_back) = receiver_from_workers.recv().await {
-            match msg_back {
-                Message::ReadVarResult {
-                    txn: txn_back,
-                    name,
-                    result,
-                    result_provide,
-                } => {
-                    // make sure response from current txn's request
-                    if txn_back == *txn {
-                        cnt -= 1;
-                        names_to_value.insert(name.clone(), result);
-                        requires_for_txn =
-                            requires_for_txn.union(&result_provide).cloned().collect();
-                        // ?
-                    }
-
-                    // when we gained all reads
-                    if cnt == 0 {
-                        // send out all the write requests to var workers
-                        for write in txn.writes.iter() {
-                            let new_val = match &write.expr {
-                                Val::Int(x) => *x,
-                                Val::Var(n) => names_to_value.get(n).unwrap().unwrap(),
-                                Val::Def(_) => todo!(),
-                            };
-                            let msg_write_request = Message::WriteVarRequest {
-                                txn: txn.clone(),
-                                write_val: new_val,
-                                requires: requires_for_txn.clone(),
-                            };
-                            let var_addr = worker_inboxes.get(&write.name).unwrap();
-                            let _ = var_addr.send(msg_write_request).await;
+        if cnt > 0 {
+            println!("need to read from other names");
+            while let Some(msg_back) = receiver_from_workers.recv().await {
+                match msg_back {
+                    Message::ReadVarResult {
+                        txn: txn_back,
+                        name,
+                        result,
+                        result_provide,
+                    } => {
+                        println!("receive txn {:?}", txn);
+                        // make sure response from current txn's request
+                        if txn_back == *txn {
+                            cnt -= 1;
+                            names_to_value.insert(name.clone(), result);
+                            requires_for_txn =
+                                requires_for_txn.union(&result_provide).cloned().collect();
+                            // ?
+                        }
+                        println!("current count is {}", cnt);
+                        if cnt == 0 {
+                            break;
                         }
                     }
-
-                    // still need to deal with deadlock when cnt > 0
+                    _ => panic!("unexpected message heard from workers"),
                 }
-                _ => panic!("unexpected message heard from workers"),
             }
+            // still need to deal with deadlock when cnt > 0            
+        }
+
+        // when we gained all reads
+        if cnt == 0 {
+            println!("no need to read from other names or gained all reads");
+            // send out all the write requests to var workers
+            for write in txn.writes.iter() {
+                let new_val = match &write.expr {
+                    Val::Int(x) => *x,
+                    Val::Var(n) => names_to_value.get(n).unwrap().unwrap(),
+                    Val::Def(_) => todo!(),
+                };
+                let msg_write_request = Message::WriteVarRequest {
+                    txn: txn.clone(),
+                    write_val: new_val,
+                    requires: requires_for_txn.clone(),
+                };
+                let var_addr = worker_inboxes.get(&write.name).unwrap();
+                let _ = var_addr.send(msg_write_request).await;
+            }
+            println!("transaction has been triggered successfully");
+            return;
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::message;
+use crate::message::{Message, PropaChange};
 use crate::transaction;
 use crate::worker::Worker;
 
@@ -16,8 +16,8 @@ pub struct VarWorker {
 impl VarWorker {
     pub fn new(
         name: &str,
-        inbox: mpsc::Receiver<message::Message>,
-        sender_to_manager: mpsc::Sender<message::Message>,
+        inbox: mpsc::Receiver<Message>,
+        sender_to_manager: mpsc::Sender<Message>,
     ) -> VarWorker {
         VarWorker {
             worker: Worker::new(name, inbox, sender_to_manager),
@@ -31,7 +31,7 @@ impl VarWorker {
     pub async fn handle_message(
         worker: &Worker,
         curr_val: &mut Option<i32>,
-        msg: &message::Message,
+        msg: &Message,
         applied_txns: &mut Vec<transaction::Txn>,
         // provides: &mut HashSet<transaction::Txn>,
         next_requires: &mut HashSet<transaction::Txn>,
@@ -39,13 +39,13 @@ impl VarWorker {
         match msg {
             // srvmanager will only send Write/Read requests when it checked
             // relevant locks are already acquired
-            message::Message::ReadVarRequest { txn } => {
+            Message::ReadVarRequest { txn } => {
                 // send ReadVarResult message back to who send the request, we
                 // assume ReadVarRequest can only be sent by srvmanager
 
                 // calculate the latest applied txn on var worker
                 let latest_txn = HashSet::from([applied_txns[applied_txns.len() - 1].clone()]);
-                let msg_back = message::Message::ReadVarResult {
+                let msg_back = Message::ReadVarResult {
                     txn: txn.clone(), // ?
                     name: worker.name.clone(),
                     result: curr_val.clone(),   // current value of state var
@@ -58,7 +58,7 @@ impl VarWorker {
 
                 next_requires.insert(txn.clone());
             }
-            message::Message::WriteVarRequest {
+            Message::WriteVarRequest {
                 txn,
                 write_val,
                 requires,
@@ -72,8 +72,8 @@ impl VarWorker {
                 }
 
                 // build propagation message
-                let msg_propa = message::Message::PropaMessage {
-                    propa_change: message::PropaChange {
+                let msg_propa = Message::PropaMessage {
+                    propa_change: PropaChange {
                         name: worker.name.to_string(),
                         new_val: curr_val.clone().unwrap(),
                         provides: HashSet::from([txn.clone()]),
@@ -92,6 +92,17 @@ impl VarWorker {
                     let _ = succ.send(msg_propa.clone()).await;
                 }
             }
+
+            // retreive value message to inform svcmananger
+            Message::ManagerRetreive => { 
+                println!("current var worker value is {:?}", curr_val);
+                let msg = Message::ManagerRetreiveResult { 
+                    name: worker.name.clone(), 
+                    result: curr_val.clone(), 
+                };
+                let _ = worker.sender_to_manager.send(msg).await;
+            } 
+
             _ => panic!(),
         }
     }

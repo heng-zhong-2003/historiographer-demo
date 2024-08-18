@@ -12,6 +12,9 @@ pub struct VarWorker {
     // pub provides: HashSet<transaction::Txn>,
     pub next_requires: HashSet<transaction::Txn>,
 }
+// QUESTION: why not mut all fields of VarWorker??
+// instead of we taking the ownership and re-declare a 
+// mutable var_worker later when run the worker?
 
 impl VarWorker {
     pub fn new(

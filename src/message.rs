@@ -14,13 +14,14 @@ pub struct Lock {
     pub lock_t: LockType,
 }
 
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct PropaChange {
     pub name: String,
     pub new_val: i32,
     pub provides: HashSet<Txn>,
     pub requires: HashSet<Txn>,
 }
+
 
 #[derive(Clone, Debug)]
 // Message types received by state var nodes

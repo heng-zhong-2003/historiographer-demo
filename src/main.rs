@@ -177,4 +177,14 @@ async fn main() {
        check result
     */
     // todo!()
+
+    // Now do the test:
+    // def d = a + b + c
+    // do action {
+    //     var a 
+    //     var b 
+    //     var c
+    // }
+
+    // srvmanager retreive d's value
 }

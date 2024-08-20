@@ -13,7 +13,7 @@ pub struct VarWorker {
     pub next_requires: HashSet<transaction::Txn>,
 }
 // QUESTION: why not mut all fields of VarWorker??
-// instead of we taking the ownership and re-declare a 
+// instead of we taking the ownership and re-declare a
 // mutable var_worker later when run the worker?
 
 impl VarWorker {
@@ -82,7 +82,6 @@ impl VarWorker {
                         provides: HashSet::from([txn.clone()]),
                         requires: requires.clone(),
                     },
-                    
                 };
 
                 // update applied txns
@@ -97,14 +96,14 @@ impl VarWorker {
             }
 
             // retreive value message to inform svcmananger
-            Message::ManagerRetreive => { 
-                println!("current var worker value is {:?}", curr_val);
-                let msg = Message::ManagerRetreiveResult { 
-                    name: worker.name.clone(), 
-                    result: curr_val.clone(), 
+            Message::ManagerRetrieve => {
+                // println!("current var worker value is {:?}", curr_val);
+                let msg = Message::ManagerRetrieveResult {
+                    name: worker.name.clone(),
+                    result: curr_val.clone(),
                 };
                 let _ = worker.sender_to_manager.send(msg).await;
-            } 
+            }
 
             _ => panic!(),
         }

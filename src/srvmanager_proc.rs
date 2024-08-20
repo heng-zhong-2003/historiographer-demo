@@ -1,10 +1,11 @@
+use crate::defworker::DefWorker;
 use crate::message::{self, Lock, LockType, Message};
 use crate::transaction::{Txn, Val};
 use crate::varworker::VarWorker;
 use crate::worker::{self, Worker};
 
 use std::collections::{HashMap, HashSet};
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
 const BUFFER_SIZE: usize = 1024;
 
@@ -39,7 +40,7 @@ impl ServiceManager {
         }
     }
 
-    pub async fn create_worker(
+    pub async fn create_var_worker(
         name: &str,
         sender_to_manager: mpsc::Sender<Message>,
         worker_inboxes: &mut HashMap<String, mpsc::Sender<Message>>,
@@ -53,6 +54,29 @@ impl ServiceManager {
         tokio::spawn(VarWorker::run_varworker(var_worker));
     }
 
+    // Aug. 19, added by Heng.
+    pub async fn create_def_worker(
+        name: &str,
+        sender_to_manager: mpsc::Sender<Message>,
+        expr: Vec<Val>,
+        replica: HashMap<String, Option<i32>>, // HashMap { dependent name -> None }
+        transtitive_deps: HashMap<String, HashSet<String>>,
+        worker_inboxes: &mut HashMap<String, mpsc::Sender<Message>>,
+    ) {
+        let (sndr, rcvr): (Sender<Message>, Receiver<Message>) = mpsc::channel(BUFFER_SIZE);
+        let def_worker = DefWorker::new(
+            name,
+            rcvr,
+            sender_to_manager.clone(),
+            expr,
+            replica,
+            transtitive_deps,
+        );
+        // println!("create def insert worker inboxes {}", name);
+        worker_inboxes.insert(name.to_string(), sndr);
+        tokio::spawn(DefWorker::run_defworker(def_worker));
+    }
+
     pub async fn handle_transaction(
         txn: &Txn,
         worker_inboxes: &mut HashMap<String, mpsc::Sender<Message>>,
@@ -64,7 +88,7 @@ impl ServiceManager {
         let mut names_to_value: HashMap<String, Option<i32>> = HashMap::new();
 
         // require all reads
-        println!("enter iterating writes");
+        // println!("enter iterating writes");
         for assign in txn.writes.iter() {
             match &assign.expr {
                 Val::Var(name) => {
@@ -79,7 +103,7 @@ impl ServiceManager {
 
                     let _ = worker_inbox_addr.send(msg_request_read).await.unwrap();
                 }
-                Val::Int(_) => { 
+                Val::Int(_) => {
                     // let msg_write_request = Message::WriteVarRequest {
                     //     txn: txn.clone(),
                     //     write_val: *new_val,
@@ -88,15 +112,17 @@ impl ServiceManager {
                     // let var_addr = worker_inboxes.get(&assign.name).unwrap();
                     // let _ = var_addr.send(msg_write_request).await;
                     continue;
-                },
-                Val::Def(_) => { continue; },
+                }
+                Val::Def(_) => {
+                    continue;
+                }
             }
         }
         // calculate the require set (R) of the transactions
         let mut requires_for_txn: HashSet<Txn> = HashSet::new();
 
         if cnt > 0 {
-            println!("need to read from other names");
+            // println!("need to read from other names");
             while let Some(msg_back) = receiver_from_workers.recv().await {
                 match msg_back {
                     Message::ReadVarResult {
@@ -105,7 +131,7 @@ impl ServiceManager {
                         result,
                         result_provide,
                     } => {
-                        println!("receive txn {:?}", txn);
+                        // println!("receive txn {:?}", txn);
                         // make sure response from current txn's request
                         if txn_back == *txn {
                             cnt -= 1;
@@ -114,7 +140,7 @@ impl ServiceManager {
                                 requires_for_txn.union(&result_provide).cloned().collect();
                             // ?
                         }
-                        println!("current count is {}", cnt);
+                        // println!("current count is {}", cnt);
                         if cnt == 0 {
                             break;
                         }
@@ -122,12 +148,12 @@ impl ServiceManager {
                     _ => panic!("unexpected message heard from workers"),
                 }
             }
-            // still need to deal with deadlock when cnt > 0            
+            // still need to deal with deadlock when cnt > 0
         }
 
         // when we gained all reads
         if cnt == 0 {
-            println!("no need to read from other names or gained all reads");
+            // println!("no need to read from other names or gained all reads");
             // send out all the write requests to var workers
             for write in txn.writes.iter() {
                 let new_val = match &write.expr {
@@ -143,7 +169,7 @@ impl ServiceManager {
                 let var_addr = worker_inboxes.get(&write.name).unwrap();
                 let _ = var_addr.send(msg_write_request).await;
             }
-            println!("transaction has been triggered successfully");
+            // println!("transaction has been triggered successfully");
             return;
         }
     }

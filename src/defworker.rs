@@ -117,8 +117,8 @@ impl DefWorker {
             }
 
             // for test only
-            Message::ManagerRetreive => {
-                let msg = Message::ManagerRetreiveResult { 
+            Message::ManagerRetrieve => {
+                let msg = Message::ManagerRetrieveResult { 
                     name: worker.name.clone(), 
                     result: curr_val.clone(), 
                 };
@@ -126,46 +126,47 @@ impl DefWorker {
             }
             _ => panic!(),
         }
+    }
 
-        pub async fn run_defworker(mut def_worker: DefWorker) {
-            while let Some(msg) = def_worker.worker.inbox.recv().await {
-                let _ = DefWorker::handle_message(
-                    &def_worker.worker,
-                    &mut def_worker.value,
-                    &mut def_worker.counter,
-                    &def_worker.transtitive_deps,
-                    &mut def_worker.propa_changes_to_apply,
-                    &msg
-                ).await;
+    pub async fn run_defworker(mut def_worker: DefWorker) {
+        while let Some(msg) = def_worker.worker.inbox.recv().await {
+            let _ = DefWorker::handle_message(
+                &def_worker.worker,
+                &mut def_worker.value,
+                &mut def_worker.counter,
+                &def_worker.transtitive_deps,
+                &mut def_worker.propa_changes_to_apply,
+                &msg
+            ).await;
 
-                // search for valid batch
-                let valid_batch = DefWorker::search_batch(
-                    &def_worker.propa_changes_to_apply,
-                    &def_worker.applied_txns,
-                );
+            // search for valid batch
+            let valid_batch = DefWorker::search_batch(
+                &def_worker.propa_changes_to_apply,
+                &def_worker.applied_txns,
+            );
 
-                // apply valid batch
-                let (all_provides, all_requires) = DefWorker::apply_batch(
-                    valid_batch, 
-                    // &def_worker.worker, 
-                    &mut def_worker.value, 
-                    &mut def_worker.applied_txns,
-                    &mut def_worker.prev_batch_provides, 
-                    &mut def_worker.propa_changes_to_apply, 
-                    &mut def_worker.replica);
+            // apply valid batch
+            let (all_provides, all_requires) = DefWorker::apply_batch(
+                valid_batch, 
+                // &def_worker.worker, 
+                &mut def_worker.value, 
+                &mut def_worker.applied_txns,
+                &mut def_worker.prev_batch_provides, 
+                &mut def_worker.propa_changes_to_apply, 
+                &mut def_worker.replica
+            );
 
-                // broadcast the update to subscribers 
-                let msg_propa = Message::PropaMessage { propa_change: 
-                    PropaChange { 
-                        name: def_worker.worker.name.clone(), 
-                        new_val: def_worker.value.clone().unwrap(), 
-                        provides: all_provides.clone(), 
-                        requires: all_requires.clone(), 
-                    }
-                };
-                for succ in def_worker.worker.senders_to_succs.iter() {
-                    let _ = succ.send(msg_propa.clone()).await;
+            // broadcast the update to subscribers 
+            let msg_propa = Message::PropaMessage { propa_change: 
+                PropaChange { 
+                    name: def_worker.worker.name.clone(), 
+                    new_val: def_worker.value.clone().unwrap(), 
+                    provides: all_provides.clone(), 
+                    requires: all_requires.clone(), 
                 }
+            };
+            for succ in def_worker.worker.senders_to_succs.iter() {
+                let _ = succ.send(msg_propa.clone()).await;
             }
         }
     }

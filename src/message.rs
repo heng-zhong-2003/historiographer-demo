@@ -22,7 +22,6 @@ pub struct PropaChange {
     pub requires: HashSet<Txn>,
 }
 
-
 #[derive(Clone, Debug)]
 // Message types received by state var nodes
 pub enum Message {
@@ -48,7 +47,7 @@ pub enum Message {
         txn: Txn,
         // requires: HashSet<Txn>, // ??
     },
-    // var worker -> srvmanager 
+    // var worker -> srvmanager
     ReadVarResult {
         txn: Txn,
         name: String,
@@ -68,19 +67,17 @@ pub enum Message {
     // var worker -> def worker (succs)
     // propagate message type (new_value, P set, R set)
     PropaMessage {
-        propa_change: PropaChange
+        propa_change: PropaChange,
     },
 
-    ManagerRetreive, 
-    ManagerRetreiveResult {
+    ManagerRetrieve,
+    ManagerRetrieveResult {
         name: String,
         result: Option<i32>,
-    }
+    }, // SubscribeRequest {
 
-    // SubscribeRequest {
+       // },
+       // SubscribeGrant {
 
-    // },
-    // SubscribeGrant {
-
-    // },
+       // },
 }

@@ -8,13 +8,13 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use tokio::sync::mpsc;
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct TxnAndName {
     pub txn: Txn,
     pub name: String,
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct _PropaChange {
     pub propa_id: i32,
     pub propa_change: PropaChange,
@@ -372,7 +372,16 @@ impl DefWorker {
 
         // apply all txns in all_provides, the result should be calculated from
         // replicas now
+        println!("{color_green}batch: {:?}{color_reset}", batch);
+        println!(
+            "{color_yellow}replica before compute_val: {:?}{color_reset}",
+            replica
+        );
         *value = compute_val(&replica);
+        println!(
+            "{color_yellow}value after compute_val: {:?}{color_reset}",
+            value
+        );
         for txn in all_provides.iter() {
             applied_txns.push(txn.clone());
         }

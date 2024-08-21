@@ -164,6 +164,7 @@ pub async fn test2() {
     .await;
 
     // std::thread::sleep(std::time::Duration::from_secs(5));
+
     let _ = def_d_inbox.send(Message::ManagerRetrieve).await;
     while let Some(rcv_val) = manager.receiver_from_workers.recv().await {
         println!("receive value: {:?}", rcv_val);

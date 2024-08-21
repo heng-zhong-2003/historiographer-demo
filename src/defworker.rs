@@ -159,6 +159,21 @@ impl DefWorker {
                 &mut def_worker.replica,
             );
 
+            // let mut has_none = false;
+            // for (nm, val) in def_worker.replica.iter() {
+            //     if *val == None {
+            //         has_none = true;
+            //         break;
+            //     }
+            // }
+            // if has_none {
+            //     continue;
+            // }
+
+            println!(
+                "{color_red}run def worker, def_worker.replica after apply_batch: {:?}{color_reset}",
+                def_worker.replica
+            );
             println!(
                 "{color_red}run def worker, def_worker.value after apply_batch: {:?}{color_reset}",
                 def_worker.value
@@ -307,7 +322,7 @@ impl DefWorker {
         applied_txns: &Vec<Txn>,
     ) -> HashSet<_PropaChange> {
         // DFS on propa_changes_to_apply,
-        println!("propa_changes_to_apply: {:?}", propa_changes_to_apply);
+        // println!("propa_changes_to_apply: {:?}", propa_changes_to_apply);
         let applied_txns_set: HashSet<Txn> = applied_txns.iter().cloned().collect();
         let mut visited: HashSet<TxnAndName> = HashSet::new();
         let mut batch_acc: HashSet<_PropaChange> = HashSet::new();
@@ -320,7 +335,7 @@ impl DefWorker {
                 &applied_txns_set,
                 &propa_changes_to_apply,
             ) {
-                println!("batch_acc in if: {:?}", batch_acc);
+                // println!("batch_acc in if: {:?}", batch_acc);
                 return batch_acc;
             }
         }

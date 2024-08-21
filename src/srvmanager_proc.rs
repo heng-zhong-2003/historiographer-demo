@@ -83,6 +83,8 @@ impl ServiceManager {
                 })
                 .await;
         }
+        
+        // TODO: should know all deps add successfully then spawn def_worker
         tokio::spawn(DefWorker::run_defworker(def_worker));
     }
 

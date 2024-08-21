@@ -92,7 +92,7 @@ impl VarWorker {
 
                 // send to subscribers (def workers)
                 for succ in worker.senders_to_succs.iter() {
-                    println!("{color_green}send propa {:?}{color_reset}", msg_propa);
+                    // println!("{color_green}send propa {:?}{color_reset}", msg_propa);
                     let _ = succ.send(msg_propa.clone()).await;
                 }
             }

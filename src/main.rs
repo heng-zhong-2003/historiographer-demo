@@ -92,8 +92,7 @@ pub async fn test1() {
 //     c := 42
 // }
 // Expected:
-
-pub async fn test2_helper() -> (tokio::sync::mpsc::Sender<Message>, ServiceManager) {
+pub async fn test2() {
     let mut manager = ServiceManager::new();
     let _ = ServiceManager::create_var_worker(
         "a",
@@ -161,25 +160,16 @@ pub async fn test2_helper() -> (tokio::sync::mpsc::Sender<Message>, ServiceManag
         &init_abc_txn,
         &mut manager.worker_inboxes,
         &mut manager.receiver_from_workers,
-    ).await;
-
-    return (def_d_inbox, manager);
-}
-
-pub async fn test2() {
-
-    // let (def_d_inbox, mut manager) = 
-    // tokio::runtime::Builder::new_multi_thread()
-    // .enable_all()
-    // .build()
-    // .unwrap()
-    // .block_on(test2_helper());
-
-    let (def_d_inbox, mut manager) = test2_helper().await;
-    
+    )
+    .await;
 
     // std::thread::sleep(std::time::Duration::from_secs(5));
-    
+
+    // Aug. 22, added by Anrui.
+    // It's ok not to send a specific signal for retreiving value now 
+    // Now def worker will automatically send updated value to srvmanager
+    // for test purpose only
+    // let _ = def_d_inbox.send(Message::ManagerRetrieve).await;
     while let Some(rcv_val) = manager.receiver_from_workers.recv().await {
         println!("receive value: {:?}", rcv_val);
     }

@@ -133,8 +133,6 @@ pub async fn test2() {
     )
     .await;
 
-    // println!("worker inbox: {:?}", manager.worker_inboxes);
-
     let var_a_inbox = manager.worker_inboxes.get("a").unwrap().clone();
     let var_b_inbox = manager.worker_inboxes.get("b").unwrap().clone();
     let var_c_inbox = manager.worker_inboxes.get("c").unwrap().clone();
@@ -157,6 +155,7 @@ pub async fn test2() {
             },
         ],
     };
+
     ServiceManager::handle_transaction(
         &init_abc_txn,
         &mut manager.worker_inboxes,
@@ -164,6 +163,7 @@ pub async fn test2() {
     )
     .await;
 
+    // std::thread::sleep(std::time::Duration::from_secs(5));
     let _ = def_d_inbox.send(Message::ManagerRetrieve).await;
     while let Some(rcv_val) = manager.receiver_from_workers.recv().await {
         println!("receive value: {:?}", rcv_val);

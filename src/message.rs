@@ -1,5 +1,5 @@
 use crate::transaction::Txn;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, Sender};
 
 use std::collections::{HashMap, HashSet};
 
@@ -74,10 +74,10 @@ pub enum Message {
     ManagerRetrieveResult {
         name: String,
         result: Option<i32>,
-    }, // SubscribeRequest {
-
-       // },
-       // SubscribeGrant {
-
-       // },
+    },
+    SubscribeRequest {
+        subscriber_name: String,
+        sender: Sender<Message>,
+    },
+    SubscribeGrant {},
 }

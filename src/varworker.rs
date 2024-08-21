@@ -2,6 +2,7 @@ use crate::message::{Message, PropaChange};
 use crate::transaction;
 use crate::worker::Worker;
 
+use inline_colorization::*;
 use std::collections::{HashMap, HashSet};
 use tokio::sync::mpsc;
 
@@ -32,7 +33,7 @@ impl VarWorker {
     }
 
     pub async fn handle_message(
-        worker: &Worker,
+        worker: &mut Worker,
         curr_val: &mut Option<i32>,
         msg: &Message,
         applied_txns: &mut Vec<transaction::Txn>,
@@ -91,6 +92,7 @@ impl VarWorker {
 
                 // send to subscribers (def workers)
                 for succ in worker.senders_to_succs.iter() {
+                    println!("{color_green}send propa {:?}{color_reset}", msg_propa);
                     let _ = succ.send(msg_propa.clone()).await;
                 }
             }
@@ -104,7 +106,13 @@ impl VarWorker {
                 };
                 let _ = worker.sender_to_manager.send(msg).await;
             }
-
+            Message::SubscribeRequest {
+                subscriber_name,
+                sender,
+            } => {
+                // println!("{color_green}varworker receive {:?}{color_reset}", msg);
+                worker.senders_to_succs.push(sender.clone());
+            }
             _ => panic!(),
         }
     }
@@ -112,7 +120,7 @@ impl VarWorker {
     pub async fn run_varworker(mut var_worker: VarWorker) {
         while let Some(msg) = var_worker.worker.inbox.recv().await {
             let _ = VarWorker::handle_message(
-                &var_worker.worker,
+                &mut var_worker.worker,
                 &mut var_worker.value,
                 &msg,
                 &mut var_worker.applied_txns,

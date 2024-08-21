@@ -69,11 +69,20 @@ impl ServiceManager {
             rcvr,
             sender_to_manager.clone(),
             expr,
-            replica,
+            replica.clone(),
             transtitive_deps,
         );
         // println!("create def insert worker inboxes {}", name);
-        worker_inboxes.insert(name.to_string(), sndr);
+        worker_inboxes.insert(name.to_string(), sndr.clone());
+        for (dep_name, _) in replica.iter() {
+            let sender_to_dep = worker_inboxes.get(dep_name).unwrap().clone();
+            let _ = sender_to_dep
+                .send(Message::SubscribeRequest {
+                    subscriber_name: name.to_string(),
+                    sender: sndr.clone(),
+                })
+                .await;
+        }
         tokio::spawn(DefWorker::run_defworker(def_worker));
     }
 
@@ -83,7 +92,7 @@ impl ServiceManager {
         receiver_from_workers: &mut mpsc::Receiver<Message>,
     ) {
         // analyze a transaction
-        // first assume f := var | f := def | f := int 
+        // first assume f := var | f := def | f := int
         let mut cnt = 0;
         let mut names_to_value: HashMap<String, Option<i32>> = HashMap::new();
 

@@ -102,10 +102,12 @@ impl DefWorker {
                 todo!()
             }
             Message::PropaMessage { propa_change } => {
+                println!("{color_blue}PropaMessage{color_reset}");
                 let _propa_change =
                     Self::processed_propachange(counter_ref, propa_change, transtitive_deps);
 
                 for txn in &propa_change.provides {
+                    println!("{color_blue}insert propa_changes_to_apply{color_reset}");
                     propa_changes_to_apply.insert(
                         TxnAndName {
                             txn: txn.clone(),
@@ -305,6 +307,7 @@ impl DefWorker {
         applied_txns: &Vec<Txn>,
     ) -> HashSet<_PropaChange> {
         // DFS on propa_changes_to_apply,
+        println!("propa_changes_to_apply: {:?}", propa_changes_to_apply);
         let applied_txns_set: HashSet<Txn> = applied_txns.iter().cloned().collect();
         let mut visited: HashSet<TxnAndName> = HashSet::new();
         let mut batch_acc: HashSet<_PropaChange> = HashSet::new();
@@ -317,11 +320,13 @@ impl DefWorker {
                 &applied_txns_set,
                 &propa_changes_to_apply,
             ) {
+                println!("batch_acc in if: {:?}", batch_acc);
                 return batch_acc;
             }
         }
 
-        return batch_acc;
+        println!("batch_acc at end: {:?}", batch_acc);
+        batch_acc
     }
 
     pub fn apply_batch(

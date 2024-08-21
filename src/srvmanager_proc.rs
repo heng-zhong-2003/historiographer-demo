@@ -83,7 +83,7 @@ impl ServiceManager {
         receiver_from_workers: &mut mpsc::Receiver<Message>,
     ) {
         // analyze a transaction
-        // first assume f := var | f := int
+        // first assume f := var | f := def | f := int 
         let mut cnt = 0;
         let mut names_to_value: HashMap<String, Option<i32>> = HashMap::new();
 
@@ -114,7 +114,7 @@ impl ServiceManager {
                     continue;
                 }
                 Val::Def(_) => {
-                    continue;
+                    todo!()
                 }
             }
         }

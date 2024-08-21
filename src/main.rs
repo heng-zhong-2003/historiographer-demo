@@ -92,7 +92,8 @@ pub async fn test1() {
 //     c := 42
 // }
 // Expected:
-pub async fn test2() {
+
+pub async fn test2_helper() -> (tokio::sync::mpsc::Sender<Message>, ServiceManager) {
     let mut manager = ServiceManager::new();
     let _ = ServiceManager::create_var_worker(
         "a",
@@ -160,11 +161,25 @@ pub async fn test2() {
         &init_abc_txn,
         &mut manager.worker_inboxes,
         &mut manager.receiver_from_workers,
-    )
-    .await;
+    ).await;
+
+    return (def_d_inbox, manager);
+}
+
+pub async fn test2() {
+
+    // let (def_d_inbox, mut manager) = 
+    // tokio::runtime::Builder::new_multi_thread()
+    // .enable_all()
+    // .build()
+    // .unwrap()
+    // .block_on(test2_helper());
+
+    let (def_d_inbox, mut manager) = test2_helper().await;
+    
 
     // std::thread::sleep(std::time::Duration::from_secs(5));
-    let _ = def_d_inbox.send(Message::ManagerRetrieve).await;
+    
     while let Some(rcv_val) = manager.receiver_from_workers.recv().await {
         println!("receive value: {:?}", rcv_val);
     }

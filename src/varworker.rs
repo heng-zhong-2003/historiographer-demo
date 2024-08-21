@@ -112,6 +112,16 @@ impl VarWorker {
             } => {
                 // println!("{color_green}varworker receive {:?}{color_reset}", msg);
                 worker.senders_to_succs.push(sender.clone());
+
+                // let msg_propa = Message::PropaMessage {
+                //     propa_change: PropaChange {
+                //         name: worker.name.to_string(),
+                //         new_val: curr_val.clone().unwrap(),
+                //         provides: HashSet::from([txn.clone()]),
+                //         requires: requires.clone(),
+                //     },
+                // };
+                // let _ = sender.send(msg_propa).await;
             }
             _ => panic!(),
         }

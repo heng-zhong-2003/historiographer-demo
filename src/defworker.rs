@@ -38,6 +38,7 @@ pub struct DefWorker {
     // for now expr is list of name or values calculating their sum
     pub expr: Vec<Val>,
     // direct dependency and their current value
+    pub all_inputs_ready: bool,
     pub replica: HashMap<String, Option<i32>>,
     // transtitive dependencies: handled by srvmanager for local dependencies
     // and SubscribeRequest/Grant for global dependencies
@@ -63,6 +64,7 @@ impl DefWorker {
             prev_batch_provides: HashSet::new(),
             propa_changes_to_apply: HashMap::new(),
             expr,
+            all_inputs_ready: false,
             replica,
             transtitive_deps,
             counter: 0,
@@ -78,6 +80,8 @@ impl DefWorker {
         worker: &Worker,
         curr_val: &mut Option<i32>,
         counter_ref: &mut i32,
+        // all_inputs_ready: &mut bool,
+        // replica: &HashMap<String, Option<i32>>,
         transtitive_deps: &HashMap<String, HashSet<String>>,
         propa_changes_to_apply: &mut HashMap<TxnAndName, _PropaChange>,
         // applied_txns: &HashSet<Txn>,
@@ -119,13 +123,13 @@ impl DefWorker {
             }
 
             // for test only
-            Message::ManagerRetrieve => {
-                let msg = Message::ManagerRetrieveResult {
-                    name: worker.name.clone(),
-                    result: curr_val.clone(),
-                };
-                let _ = worker.sender_to_manager.send(msg).await;
-            }
+            // Message::ManagerRetrieve => {
+            //     let msg = Message::ManagerRetrieveResult {
+            //         name: worker.name.clone(),
+            //         result: curr_val.clone(),
+            //     };
+            //     let _ = worker.sender_to_manager.send(msg).await;
+            // }
             _ => panic!(),
         }
     }
@@ -149,7 +153,7 @@ impl DefWorker {
             );
 
             // apply valid batch
-            let (all_provides, all_requires) = DefWorker::apply_batch(
+            let (all_provides, all_requires, new_value) = DefWorker::apply_batch(
                 valid_batch,
                 // &def_worker.worker,
                 &mut def_worker.value,
@@ -159,23 +163,34 @@ impl DefWorker {
                 &mut def_worker.replica,
             );
 
-            println!(
-                "{color_red}run def worker, def_worker.value after apply_batch: {:?}{color_reset}",
-                def_worker.value
-            );
-
-            // broadcast the update to subscribers
-            let msg_propa = Message::PropaMessage {
-                propa_change: PropaChange {
+            // for test, ack srvmanager
+            if new_value != None {
+                let msg = Message::ManagerRetrieveResult {
                     name: def_worker.worker.name.clone(),
-                    new_val: def_worker.value.clone().unwrap(),
-                    provides: all_provides.clone(),
-                    requires: all_requires.clone(),
-                },
-            };
-            for succ in def_worker.worker.senders_to_succs.iter() {
-                let _ = succ.send(msg_propa.clone()).await;
+                    result: new_value.clone(),
+                };
+                let _ = def_worker.worker.sender_to_manager.send(msg).await;
+
+                // broadcast the update to subscribers
+                let msg_propa = Message::PropaMessage {
+                    propa_change: PropaChange {
+                        name: def_worker.worker.name.clone(),
+                        new_val: new_value.unwrap(),
+                        provides: all_provides.clone(),
+                        requires: all_requires.clone(),
+                    },
+                };
+                for succ in def_worker.worker.senders_to_succs.iter() {
+                    let _ = succ.send(msg_propa.clone()).await;
+                }
             }
+
+            // println!(
+            //     "{color_red}run def worker, def_worker.value after apply_batch: {:?}{color_reset}",
+            //     def_worker.value
+            // );
+
+            
         }
     }
 
@@ -337,7 +352,7 @@ impl DefWorker {
         prev_batch_provides: &mut HashSet<Txn>,
         propa_changes_to_apply: &mut HashMap<TxnAndName, _PropaChange>,
         replica: &mut HashMap<String, Option<i32>>,
-    ) -> (HashSet<Txn>, HashSet<Txn>) {
+    ) -> (HashSet<Txn>, HashSet<Txn>, Option<i32>) {
         let mut all_provides: HashSet<Txn> = HashSet::new();
         let mut all_requires: HashSet<Txn> = prev_batch_provides.clone();
 
@@ -394,7 +409,7 @@ impl DefWorker {
         // update prev batch's applied txns, i.e. to be all_provides
         *prev_batch_provides = all_provides.clone();
 
-        return (all_provides, all_requires);
+        return (all_provides, all_requires, *value);
 
         // // broadcast the update to subscribers
         // let msg_propa = Message::PropaMessage { propa_change:

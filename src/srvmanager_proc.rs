@@ -178,7 +178,7 @@ impl ServiceManager {
                 let var_addr = worker_inboxes.get(&write.name).unwrap();
                 let _ = var_addr.send(msg_write_request).await;
             }
-            // println!("transaction has been triggered successfully");
+            println!("transaction has been triggered successfully");
             return;
         }
     }

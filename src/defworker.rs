@@ -136,6 +136,7 @@ impl DefWorker {
 
     pub async fn run_defworker(mut def_worker: DefWorker) {
         while let Some(msg) = def_worker.worker.inbox.recv().await {
+            println!("{color_red}defworker receive msg {:?}{color_reset}", msg);
             let _ = DefWorker::handle_message(
                 &def_worker.worker,
                 &mut def_worker.value,
@@ -153,6 +154,7 @@ impl DefWorker {
             );
 
             // apply valid batch
+            println!("{color_yellow}apply batch called{color_reset}");
             let (all_provides, all_requires, new_value) = DefWorker::apply_batch(
                 valid_batch,
                 // &def_worker.worker,
@@ -189,8 +191,6 @@ impl DefWorker {
             //     "{color_red}run def worker, def_worker.value after apply_batch: {:?}{color_reset}",
             //     def_worker.value
             // );
-
-            
         }
     }
 

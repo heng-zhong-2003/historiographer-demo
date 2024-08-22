@@ -1,5 +1,6 @@
-use std::hash::{Hash, Hasher};
+use std::{fmt::Debug, hash::{Hash, Hasher}};
 use tokio::time::Instant;
+use std::fmt;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Debug)]
 pub struct TxnId {
@@ -32,7 +33,7 @@ pub struct WriteToName {
 
 // (txid, writes)
 // writes := a list of updates to state vars
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Txn {
     pub id: TxnId,
     pub writes: Vec<WriteToName>,
@@ -49,5 +50,20 @@ impl Eq for Txn {}
 impl Hash for Txn {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+// impl fmt::Debug for TxnId {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         f.debug_struct("TxnId")
+//         .field("id", &self.time.fmt)
+//         .finish()
+//     }
+// }
+
+impl fmt::Debug for Txn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Txn")
+         .finish()
     }
 }

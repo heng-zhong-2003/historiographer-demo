@@ -85,6 +85,8 @@ impl ServiceManager {
         }
         
         // TODO: should know all deps add successfully then spawn def_worker
+        // require all SubscribeGrant 
+        
         tokio::spawn(DefWorker::run_defworker(def_worker));
     }
 

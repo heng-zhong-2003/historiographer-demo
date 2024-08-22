@@ -45,6 +45,14 @@ pub struct DefWorker {
     pub transtitive_deps: HashMap<String, HashSet<String>>,
     // var ->->-> input(def)
     // input(def) -> var
+    /*
+       a   b    c 
+        \  |   /
+           d 
+        a -> [] // or reflexively contain a ? 
+        b -> [] // or reflexively contain b ? 
+        c -> [] // or reflexively contain c ?
+     */
     pub counter: i32,
 }
 
@@ -120,6 +128,7 @@ impl DefWorker {
                         _propa_change.clone(),
                     );
                 }
+                println!("after receiving propamsg, the graph is {:#?}", propa_changes_to_apply);
             }
 
             // for test only
@@ -203,7 +212,7 @@ impl DefWorker {
     //   we have to wait for change messages from all of our inputs that
     //   (transitively) depend on the variables that t writes to.
     // - (mathematically)
-    //   for all i in direct_depenency(d),
+    //   for all i in inputs(d),
     //      if there exists a write to transitive_dependency(i) in writes,
     //      then we want to see a propa change (i := _, P', R') in Batch
     //         s.t. (t, writes) in P'
@@ -226,22 +235,27 @@ impl DefWorker {
         counter_ref: &mut i32,
         propa_change: &PropaChange,
         transtitive_deps: &HashMap<String, HashSet<String>>,
+        // expect inputs(d) maps to transtitively depending vars
     ) -> _PropaChange {
+        println!("def should have inputs: {:?}", transtitive_deps);
         let mut deps: HashSet<TxnAndName> = HashSet::new();
 
         for txn in propa_change.provides.iter() {
             for write in txn.writes.iter() {
                 let var_name = write.name.clone();
+                println!("def name: {:?}", var_name);
 
                 let mut inputs: Vec<String> = Vec::new();
                 for (i, dep_vars) in transtitive_deps.iter() {
                     match dep_vars.get(&var_name) {
                         Some(_) => {
+                            println!("def add input: {:?}", i);
                             inputs.push(i.clone());
                         }
                         None => {}
                     }
                 }
+                println!("def has inputs: {:?}", inputs);
 
                 for i_name in inputs.iter() {
                     let txn_name = TxnAndName {
@@ -292,6 +306,7 @@ impl DefWorker {
         applied_txns: &HashSet<Txn>,
         graph: &HashMap<TxnAndName, _PropaChange>,
     ) -> bool {
+        println!("dfs current node {:?}", curr_node);
         if visited.get(curr_node) != None
         // there already exists an change (sent by name) in B_acc, s.t. txn in change
             || applied_txns.get(&curr_node.txn) != None
@@ -299,6 +314,7 @@ impl DefWorker {
             // TODO!: make sure the understanding is correct
             // txn already exists in applied batch set
             // we can infer for all {txn, name} -> change, change in applied batch set
+            println!("dfs find node {:?}", curr_node);
             return true;
         } else {
             match graph.get(curr_node) {
@@ -308,6 +324,7 @@ impl DefWorker {
                     batch_acc.insert(_propa_change.clone());
                     for succ in _propa_change.deps.iter() {
                         if !Self::dfs(succ, visited, batch_acc, applied_txns, graph) {
+                            println!("dfs cannot find {:?}", succ);
                             return false;
                         }
                     }
@@ -335,13 +352,18 @@ impl DefWorker {
                 &applied_txns_set,
                 &propa_changes_to_apply,
             ) {
-                // println!("batch_acc in if: {:?}", batch_acc);
+                println!("find a batch: {:#?}", batch_acc);
                 return batch_acc;
+            } 
+            else {
+                visited = HashSet::new();
+                batch_acc = HashSet::new();
             }
         }
 
-        println!("batch_acc at end: {:?}", batch_acc);
+        println!("cannot find a batch: {:#?}", batch_acc);
         batch_acc
+        
     }
 
     pub fn apply_batch(

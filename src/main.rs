@@ -113,9 +113,11 @@ pub async fn test2() {
     )
     .await;
     let mut transtitive_deps: HashMap<String, HashSet<String>> = HashMap::new();
-    transtitive_deps.insert("a".to_string(), vec!["d".to_string()].into_iter().collect());
-    transtitive_deps.insert("b".to_string(), vec!["d".to_string()].into_iter().collect());
-    transtitive_deps.insert("c".to_string(), vec!["d".to_string()].into_iter().collect());
+
+    // TODO: understand transitive_dependency for inputs of d
+    transtitive_deps.insert("a".to_string(), vec!["a".to_string()].into_iter().collect());
+    transtitive_deps.insert("b".to_string(), vec!["b".to_string()].into_iter().collect());
+    transtitive_deps.insert("c".to_string(), vec!["c".to_string()].into_iter().collect());
     let _ = ServiceManager::create_def_worker(
         "d",
         manager.sender_to_manager.clone(),

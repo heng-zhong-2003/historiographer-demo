@@ -126,8 +126,15 @@ impl ServiceManager {
                     // let _ = var_addr.send(msg_write_request).await;
                     continue;
                 }
-                Val::Def(_) => {
-                    todo!()
+                Val::Def(name) => {
+                    cnt += 1;
+                    names_to_value.insert(name.clone(), None);
+
+                    let msg_request_read = Message::ReadVarRequest { txn: txn.clone() };
+                    let worker_inbox_addr: &mpsc::Sender<Message> =
+                        worker_inboxes.get(name).unwrap();
+
+                    let _ = worker_inbox_addr.send(msg_request_read).await.unwrap();
                 }
             }
         }
@@ -139,6 +146,26 @@ impl ServiceManager {
             while let Some(msg_back) = receiver_from_workers.recv().await {
                 match msg_back {
                     Message::ReadVarResult {
+                        txn: txn_back,
+                        name,
+                        result,
+                        result_provide,
+                    } => {
+                        // println!("receive txn {:?}", txn);
+                        // make sure response from current txn's request
+                        if txn_back == *txn {
+                            cnt -= 1;
+                            names_to_value.insert(name.clone(), result);
+                            requires_for_txn =
+                                requires_for_txn.union(&result_provide).cloned().collect();
+                            // ?
+                        }
+                        // println!("current count is {}", cnt);
+                        if cnt == 0 {
+                            break;
+                        }
+                    }
+                    Message::ReadDefResult {
                         txn: txn_back,
                         name,
                         result,
@@ -172,7 +199,7 @@ impl ServiceManager {
                 let new_val = match &write.expr {
                     Val::Int(x) => *x,
                     Val::Var(n) => names_to_value.get(n).unwrap().unwrap(),
-                    Val::Def(_) => todo!(),
+                    Val::Def(n) => names_to_value.get(n).unwrap().unwrap(),
                 };
                 let msg_write_request = Message::WriteVarRequest {
                     txn: txn.clone(),

@@ -92,26 +92,30 @@ impl DefWorker {
         // replica: &HashMap<String, Option<i32>>,
         transtitive_deps: &HashMap<String, HashSet<String>>,
         propa_changes_to_apply: &mut HashMap<TxnAndName, _PropaChange>,
-        // applied_txns: &HashSet<Txn>,
+        applied_txns: &Vec<Txn>,
         msg: &Message,
     ) {
         match msg {
-            Message::ReadDefRequest { txn } => {
-                // { f := def }
-                // ?
+            Message::ReadDefRequest { txn, requires } => {
+                // check whether Def work already get all required txns:
+                // TODO: something on requires, (not sure why necessary)?
+                // for all txn in requires, txn should be in applied if they are relavant to this def
 
-                // add to pending queue ?
+                let result_provide = applied_txns.clone().clone().into_iter().collect();
+                // TODO: set smaller than applied_txns should also work ...
+                let msg_back = Message::ReadDefResult {
+                    txn: txn.clone(), 
+                    name: worker.name.clone(),
+                    result: curr_val.clone(),   
+                    result_provide: result_provide, 
+                };
 
-                //
-                //   while true {
-                //        handle_message
-                //        default process
-                //   }
+                // send message back to srvmanager
+                let _ = worker.sender_to_manager.send(msg_back).await;
 
-                // all txns in requires must already be applied by def worker
+                // TODO: do we need merge this transaction into future required sets
 
-                // if all requires already in applied_txns, then send back to srvmananger
-                todo!()
+
             }
             Message::PropaMessage { propa_change } => {
                 println!("{color_blue}PropaMessage{color_reset}");
@@ -152,6 +156,7 @@ impl DefWorker {
                 &mut def_worker.counter,
                 &def_worker.transtitive_deps,
                 &mut def_worker.propa_changes_to_apply,
+                &def_worker.applied_txns,
                 &msg,
             )
             .await;

@@ -45,7 +45,7 @@ pub enum Message {
     // srvmanager -> def worker
     ReadDefRequest {
         txn: Txn,
-        // requires: HashSet<Txn>, // ??
+        requires: HashSet<Txn>, // ?? Why we need this
     },
     // var worker -> srvmanager
     ReadVarResult {
@@ -56,7 +56,9 @@ pub enum Message {
     },
     ReadDefResult {
         txn: Txn,
+        name: String,
         result: Option<i32>,
+        result_provide: HashSet<Txn>,
     },
     // srvmanager -> var worker
     WriteVarRequest {
